@@ -43,15 +43,16 @@ func main() {
 
 func effect(stop *atomic.Bool, g *sync.WaitGroup, errChannel chan<- error) {
 	defer g.Done()
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
 	_, _, err := MagInitialize.Call()
 	if !errors.Is(err, windows.ERROR_SUCCESS) {
 		errChannel <- fmt.Errorf("MagInitialize call error: %s", err)
 		return
 	}
-	runtime.LockOSThread()
+
 	defer MagUninitialize.Call()
-	defer runtime.UnlockOSThread()
 
 	for !stop.Load() {
 		effect := MAGCOLOREFFECT{
