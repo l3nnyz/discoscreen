@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -15,10 +16,16 @@ import (
 )
 
 func main() {
+	flag.Parse()
 	var errorChannel = make(chan error, 1)
+	var timeout <-chan time.Time
 
 	ws.Add(1)
 	go effect(&stop, &ws, errorChannel)
+
+	if *exitTime > 0 {
+		timeout = time.After(time.Duration(*exitTime) * time.Second)
+	}
 
 	for {
 		select {
@@ -29,11 +36,16 @@ func main() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+		case <-timeout:
+			stop.Store(true)
+			ws.Wait()
+			fmt.Println("Time limit reached. Closing...")
+			os.Exit(0)
 		default:
 			if isEscape() {
 				stop.Store(true)
 				ws.Wait()
-				fmt.Println("Escape pressed.\nclosing...")
+				fmt.Println("Escape pressed. Closing...")
 				os.Exit(0)
 			}
 		}
