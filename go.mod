@@ -1,4 +1,4 @@
-module awesomeeffect
+module discoscreen
 
 go 1.26.0
 
