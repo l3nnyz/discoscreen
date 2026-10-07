@@ -1,31 +1,57 @@
 package main
 
 import (
-	"math/rand"
+	"errors"
+	"fmt"
+	"math/rand/v2"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 func main() {
+	var errorChannel = make(chan error, 1)
+
 	ws.Add(1)
-	go effect(&stop, &ws)
+	go effect(&stop, &ws, errorChannel)
 
-	for !isEscape() {
-		time.Sleep(50 * time.Millisecond)
+	for {
+		select {
+		case err := <-errorChannel:
+			if err != nil {
+				stop.Store(true)
+				ws.Wait()
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		default:
+			if isEscape() {
+				stop.Store(true)
+				ws.Wait()
+				fmt.Println("Escape pressed.\nclosing...")
+				os.Exit(0)
+			}
+		}
+		time.Sleep(60 * time.Millisecond)
 	}
-	stop.Store(true)
-
-	ws.Wait()
-	os.Exit(0)
 }
 
-func effect(stop *atomic.Bool, g *sync.WaitGroup) {
-	MagInitialize.Call()
-	defer MagUninitialize.Call()
+func effect(stop *atomic.Bool, g *sync.WaitGroup, errChannel chan<- error) {
 	defer g.Done()
+
+	_, _, err := MagInitialize.Call()
+	if !errors.Is(err, windows.ERROR_SUCCESS) {
+		errChannel <- fmt.Errorf("MagInitialize call error: %s", err)
+		return
+	}
+	runtime.LockOSThread()
+	defer MagUninitialize.Call()
+	defer runtime.UnlockOSThread()
 
 	for !stop.Load() {
 		effect := MAGCOLOREFFECT{
@@ -39,11 +65,15 @@ func effect(stop *atomic.Bool, g *sync.WaitGroup) {
 		}
 
 		for i := 0; i < 3; i++ {
-			randVal := float32(rand.Intn(0xFFFFFF)) / float32(0xFFFFFF)
+			randVal := float32(rand.IntN(0xFFFFFF)) / float32(0xFFFFFF)
 			effect.Transform[4][i] = randVal*0.05 - 0.025
 		}
 
-		MagSetFullscreenColorEffect.Call(uintptr(unsafe.Pointer(&effect)))
+		_, _, err := MagSetFullscreenColorEffect.Call(uintptr(unsafe.Pointer(&effect)))
+		if !errors.Is(err, windows.ERROR_SUCCESS) && !errors.Is(err, windows.ERROR_NOT_READY) {
+			errChannel <- fmt.Errorf("MagSetFullscreenColorEffect call error: %s", err)
+			return
+		}
 
 		time.Sleep(500 * time.Millisecond)
 	}
