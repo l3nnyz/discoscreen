@@ -15,7 +15,23 @@
 
 ## 🚀 Utilisation
 
-Téléchargez [Discoscreen.exe depuis la release v1.0.0](https://github.com/l3nnyz/discoscreen/releases/tag/v1.0.0), puis lancez-le. Appuyez sur **Échap** pour arrêter l'effet et fermer le programme.
+Téléchargez [Discoscreen.exe](https://github.com/l3nnyz/discoscreen/releases/tag/v1.1.0), puis lancez-le. Par défaut, appuyez sur **Échap** pour arrêter l'effet et fermer le programme.
+
+Des options peuvent être passées en lançant le programme depuis un terminal :
+
+```powershell
+.\discoscreen.exe -exittime 60
+```
+
+`-exittime` définit la durée maximale de l'effet, en secondes. Sa valeur par défaut (`0`) désactive cette limite.
+
+Pour désactiver l'arrêt avec **Échap**, utilisez `-noescape` :
+
+```powershell
+.\discoscreen.exe -exittime 60 -noescape
+```
+
+Avec `-noescape`, prévoyez une limite de temps ou arrêtez le processus manuellement.
 
 ## 🛠️ Compiler le projet
 

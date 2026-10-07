@@ -42,7 +42,7 @@ func main() {
 			fmt.Println("Time limit reached. Closing...")
 			os.Exit(0)
 		default:
-			if isEscape() {
+			if isEscape() && !*canEscape {
 				stop.Store(true)
 				ws.Wait()
 				fmt.Println("Escape pressed. Closing...")
