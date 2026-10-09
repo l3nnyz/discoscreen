@@ -19,9 +19,11 @@ func main() {
 	flag.Parse()
 	var errorChannel = make(chan error, 1)
 	var timeout <-chan time.Time
+	var delay time.Duration
+	setSpeed(&delay)
 
 	ws.Add(1)
-	go effect(&stop, &ws, errorChannel)
+	go effect(&stop, &ws, &delay, errorChannel)
 
 	if *exitTime > 0 {
 		timeout = time.After(time.Duration(*exitTime) * time.Second)
@@ -53,7 +55,7 @@ func main() {
 	}
 }
 
-func effect(stop *atomic.Bool, g *sync.WaitGroup, errChannel chan<- error) {
+func effect(stop *atomic.Bool, g *sync.WaitGroup, delay *time.Duration, errChannel chan<- error) {
 	defer g.Done()
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -88,11 +90,30 @@ func effect(stop *atomic.Bool, g *sync.WaitGroup, errChannel chan<- error) {
 			return
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(*delay * time.Millisecond)
 	}
 }
 
 func isEscape() bool {
 	ret, _, _ := GetAsyncKeyState.Call(uintptr(VK_ESCAPE))
 	return int16(ret) < 0
+}
+
+func setSpeed(delay *time.Duration) {
+	switch *speed {
+	case "slower":
+		*delay = slowerSpeed
+	case "slow":
+		*delay = slowSpeed
+	case "normal":
+		*delay = normalSpeed
+	case "fast":
+		*delay = fastSpeed
+	case "fastest":
+		*delay = fastestSpeed
+	case "club":
+		*delay = clubSpeed
+	default:
+		*delay = normalSpeed
+	}
 }
