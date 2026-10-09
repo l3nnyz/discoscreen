@@ -33,6 +33,20 @@ Pour désactiver l'arrêt avec **Échap**, utilisez `-noescape` :
 
 Avec `-noescape`, prévoyez une limite de temps ou arrêtez le processus manuellement.
 
+Pour ajuster la vitesse de l'effet, utilisez `-speed` :
+
+```powershell
+.\discoscreen.exe -speed fast
+```
+
+`-speed` accepte les valeurs suivantes : `slower`, `slow`, `normal`, `fast`, `fastest`. Sa valeur par défaut est `normal`.
+
+Vous pouvez combiner les options :
+
+```powershell
+.\discoscreen.exe -exittime 60 -speed fast -noescape
+```
+
 ## 🛠️ Compiler le projet
 
 Nécessite Windows et Go 1.26 ou une version ultérieure. Depuis le dossier du projet, lancez `build.bat`. Le fichier `discoscreen.exe` sera créé dans le même dossier.
