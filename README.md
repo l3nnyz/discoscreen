@@ -19,7 +19,7 @@
 
 ## 🚀 Utilisation
 
-Téléchargez [Discoscreen.exe](https://github.com/l3nnyz/discoscreen/releases/tag/v1.1.0), puis lancez-le. Par défaut, appuyez sur **Échap** pour arrêter l'effet et fermer le programme. Vous pouvez aussi appuyer sur **Ctrl+C** dans la fenêtre du terminal.
+Téléchargez [Discoscreen.exe](https://github.com/l3nnyz/discoscreen/releases/latest), puis lancez-le. Par défaut, appuyez sur **Échap** pour arrêter l'effet et fermer le programme. Vous pouvez aussi appuyer sur **Ctrl+C** dans la fenêtre du terminal.
 
 Des options peuvent être passées en lançant le programme depuis un terminal :
 
