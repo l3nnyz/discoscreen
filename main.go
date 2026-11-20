@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -27,7 +26,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	ws.Add(1)
-	go effect(&stop, &ws, &delay, errorChannel)
+	go effect(stop, &ws, &delay, errorChannel)
 
 	if *exitTime > 0 {
 		timeout = time.After(time.Duration(*exitTime) * time.Second)
@@ -37,24 +36,24 @@ func main() {
 		select {
 		case err := <-errorChannel:
 			if err != nil {
-				stop.Store(true)
+				close(stop)
 				ws.Wait()
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case <-timeout:
-			stop.Store(true)
+			close(stop)
 			ws.Wait()
 			fmt.Println("Time limit reached. Closing...")
 			os.Exit(0)
 		case <-interrupt:
-			stop.Store(true)
+			close(stop)
 			ws.Wait()
 			fmt.Println("Ctrl+C pressed. Closing...")
 			os.Exit(0)
 		default:
-			if isEscape() && !*canEscape {
-				stop.Store(true)
+			if isEscape() && !*noEscape {
+				close(stop)
 				ws.Wait()
 				fmt.Println("Escape pressed. Closing...")
 				os.Exit(0)
@@ -64,7 +63,7 @@ func main() {
 	}
 }
 
-func effect(stop *atomic.Bool, g *sync.WaitGroup, delay *time.Duration, errChannel chan<- error) {
+func effect(stop <-chan struct{}, g *sync.WaitGroup, delay *time.Duration, errChannel chan<- error) {
 	defer g.Done()
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -77,7 +76,7 @@ func effect(stop *atomic.Bool, g *sync.WaitGroup, delay *time.Duration, errChann
 
 	defer MagUninitialize.Call()
 
-	for !stop.Load() {
+	for {
 		effect := MAGCOLOREFFECT{
 			Transform: [5][5]float32{
 				{1, 0, 0, 0, 0},
@@ -99,7 +98,11 @@ func effect(stop *atomic.Bool, g *sync.WaitGroup, delay *time.Duration, errChann
 			return
 		}
 
-		time.Sleep(*delay * time.Millisecond)
+		select {
+		case <-stop:
+			return
+		case <-time.After(*delay):
+		}
 	}
 }
 
