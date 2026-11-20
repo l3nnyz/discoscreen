@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"os/signal"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -21,6 +22,9 @@ func main() {
 	var timeout <-chan time.Time
 	var delay time.Duration
 	setSpeed(&delay)
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 
 	ws.Add(1)
 	go effect(&stop, &ws, &delay, errorChannel)
@@ -42,6 +46,11 @@ func main() {
 			stop.Store(true)
 			ws.Wait()
 			fmt.Println("Time limit reached. Closing...")
+			os.Exit(0)
+		case <-interrupt:
+			stop.Store(true)
+			ws.Wait()
+			fmt.Println("Ctrl+C pressed. Closing...")
 			os.Exit(0)
 		default:
 			if isEscape() && !*canEscape {
@@ -81,7 +90,7 @@ func effect(stop *atomic.Bool, g *sync.WaitGroup, delay *time.Duration, errChann
 
 		for i := 0; i < 3; i++ {
 			randVal := float32(rand.IntN(0xFFFFFF)) / float32(0xFFFFFF)
-			effect.Transform[4][i] = randVal*0.05 - 0.025
+			effect.Transform[4][i] = randVal*0.05 - 0.035
 		}
 
 		_, _, err := MagSetFullscreenColorEffect.Call(uintptr(unsafe.Pointer(&effect)))

@@ -1,2 +1,2 @@
 @echo off
-go build -ldflags="-s -w -H=windowsgui" -trimpath -o discoscreen.exe
+go build -ldflags="-s -w" -trimpath -o discoscreen.exe
