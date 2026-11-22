@@ -32,35 +32,58 @@ func main() {
 		timeout = time.After(time.Duration(*exitTime) * time.Second)
 	}
 
+	printHelp()
+
+	start := time.Now()
+	lastShown := time.Duration(-1)
+
 	for {
 		select {
 		case err := <-errorChannel:
 			if err != nil {
-				close(stop)
-				ws.Wait()
-				fmt.Println(err)
-				os.Exit(1)
+				shutdown(err.Error(), 1)
 			}
 		case <-timeout:
-			close(stop)
-			ws.Wait()
-			fmt.Println("Time limit reached. Closing...")
-			os.Exit(0)
+			shutdown("Time limit reached. Closing...", 0)
 		case <-interrupt:
-			close(stop)
-			ws.Wait()
-			fmt.Println("Ctrl+C pressed. Closing...")
-			os.Exit(0)
+			shutdown("Ctrl+C pressed. Closing...", 0)
 		default:
 			if isEscape() && !*noEscape {
-				close(stop)
-				ws.Wait()
-				fmt.Println("Escape pressed. Closing...")
-				os.Exit(0)
+				shutdown("Escape pressed. Closing...", 0)
 			}
 		}
+
+		if elapsed := time.Since(start).Truncate(time.Second); elapsed != lastShown {
+			lastShown = elapsed
+			fmt.Printf("\rRunning time: %s", formatDuration(elapsed))
+		}
+
 		time.Sleep(60 * time.Millisecond)
 	}
+}
+
+func printHelp() {
+	if *noEscape {
+		fmt.Println("Press Ctrl+C to stop the effect and close the program.")
+	} else {
+		fmt.Println("Press Escape or Ctrl+C to stop the effect and close the program.")
+	}
+	if *exitTime > 0 {
+		fmt.Printf("The effect will stop automatically after %s.\n", formatDuration(time.Duration(*exitTime)*time.Second))
+	}
+}
+
+func shutdown(message string, code int) {
+	close(stop)
+	ws.Wait()
+	fmt.Println()
+	fmt.Println(message)
+	os.Exit(code)
+}
+
+func formatDuration(d time.Duration) string {
+	total := int(d / time.Second)
+	return fmt.Sprintf("%02d:%02d:%02d", total/3600, total%3600/60, total%60)
 }
 
 func effect(stop <-chan struct{}, g *sync.WaitGroup, delay *time.Duration, errChannel chan<- error) {
