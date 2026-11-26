@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -19,14 +20,24 @@ func main() {
 	flag.Parse()
 	var errorChannel = make(chan error, 1)
 	var timeout <-chan time.Time
-	var delay time.Duration
-	setSpeed(&delay)
+	delay := selectSpeed()
 
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	shutdown := func(message string, code int) {
+		close(stop)
+		wg.Wait()
+		fmt.Println()
+		fmt.Println(message)
+		os.Exit(code)
+	}
+
+	// SIGTERM is sent when the console window is closed.
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
-	ws.Add(1)
-	go effect(stop, &ws, &delay, errorChannel)
+	wg.Add(1)
+	go effect(stop, &wg, delay, errorChannel)
 
 	if *exitTime > 0 {
 		timeout = time.After(time.Duration(*exitTime) * time.Second)
@@ -45,7 +56,10 @@ func main() {
 			}
 		case <-timeout:
 			shutdown("Time limit reached. Closing...", 0)
-		case <-interrupt:
+		case sig := <-interrupt:
+			if sig == syscall.SIGTERM {
+				shutdown("Console closed. Closing...", 0)
+			}
 			shutdown("Ctrl+C pressed. Closing...", 0)
 		default:
 			if isEscape() && !*noEscape {
@@ -73,20 +87,12 @@ func printHelp() {
 	}
 }
 
-func shutdown(message string, code int) {
-	close(stop)
-	ws.Wait()
-	fmt.Println()
-	fmt.Println(message)
-	os.Exit(code)
-}
-
 func formatDuration(d time.Duration) string {
 	total := int(d / time.Second)
 	return fmt.Sprintf("%02d:%02d:%02d", total/3600, total%3600/60, total%60)
 }
 
-func effect(stop <-chan struct{}, g *sync.WaitGroup, delay *time.Duration, errChannel chan<- error) {
+func effect(stop <-chan struct{}, g *sync.WaitGroup, delay time.Duration, errChannel chan<- error) {
 	defer g.Done()
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -111,8 +117,7 @@ func effect(stop <-chan struct{}, g *sync.WaitGroup, delay *time.Duration, errCh
 		}
 
 		for i := 0; i < 3; i++ {
-			randVal := float32(rand.IntN(0xFFFFFF)) / float32(0xFFFFFF)
-			effect.Transform[4][i] = randVal*0.05 - 0.035
+			effect.Transform[4][i] = rand.Float32()*0.05 - 0.035
 		}
 
 		_, _, err := MagSetFullscreenColorEffect.Call(uintptr(unsafe.Pointer(&effect)))
@@ -124,7 +129,7 @@ func effect(stop <-chan struct{}, g *sync.WaitGroup, delay *time.Duration, errCh
 		select {
 		case <-stop:
 			return
-		case <-time.After(*delay):
+		case <-time.After(delay):
 		}
 	}
 }
@@ -134,21 +139,10 @@ func isEscape() bool {
 	return int16(ret) < 0
 }
 
-func setSpeed(delay *time.Duration) {
-	switch *speed {
-	case "slower":
-		*delay = slowerSpeed
-	case "slow":
-		*delay = slowSpeed
-	case "normal":
-		*delay = normalSpeed
-	case "fast":
-		*delay = fastSpeed
-	case "fastest":
-		*delay = fastestSpeed
-	case "club":
-		*delay = clubSpeed
-	default:
-		*delay = normalSpeed
+func selectSpeed() time.Duration {
+	if delay, ok := speeds[*speed]; ok {
+		return delay
 	}
+	fmt.Printf("Invalid speed %q (expected slower/slow/normal/fast/fastest). Using normal speed.\n", *speed)
+	return speeds["normal"]
 }

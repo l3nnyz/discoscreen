@@ -43,7 +43,7 @@ Pour ajuster la vitesse de l'effet, utilisez `-speed` :
 .\discoscreen.exe -speed fast
 ```
 
-`-speed` accepte les valeurs suivantes : `slower`, `slow`, `normal`, `fast`, `fastest`. Sa valeur par défaut est `normal`.
+`-speed` accepte les valeurs suivantes : `slower`, `slow`, `normal`, `fast`, `fastest`. Sa valeur par défaut est `normal`. Une valeur invalide affiche un avertissement et l'effet se lance en vitesse `normal`.
 
 Vous pouvez combiner les options :
 
